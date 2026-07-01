@@ -1,0 +1,267 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── AUTH ──────────────────────────────────────────────────────────────────────
+
+model User {
+  id            String         @id @default(cuid())
+  username      String         @unique
+  passwordHash  String
+  voluntario    Voluntario?
+  refreshTokens RefreshToken[]
+  createdAt     DateTime       @default(now())
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+// ── VOLUNTARIOS ───────────────────────────────────────────────────────────────
+
+enum TipoVoluntario {
+  QUINCE
+  CONFEDERADO
+}
+
+enum RolSistema {
+  ADMIN
+  JEFE_GUARDIA
+  GUARDIAN
+  CONDUCTOR
+  OFICIALIDAD
+}
+
+model Voluntario {
+  id          String         @id @default(cuid())
+  correlativo Int
+  tipo        TipoVoluntario
+  activo      Boolean        @default(true)
+  userId      String?        @unique
+  user        User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  nombres     String
+  apellidoP   String
+  apellidoM   String?
+  rut         String
+  rutDigito   String
+  company     Int
+  email       String
+  telefono    String?
+  roles             VoluntarioRol[]
+  camasAsignadas    CamaAsignacion[]
+  permisosEmitidos  Permiso[]          @relation("solicitante")
+  permisosRecibidos Permiso[]          @relation("reemplazante")
+  correccionesComoVoluntario CorreccionNoche[] @relation("voluntario")
+  correccionesComoAutor      CorreccionNoche[] @relation("autor")
+  mensajero         Mensajero[]
+  conductorGuardia  ConductorGuardia[]
+  jgsSubrogante     JGsSubrogante[]
+  licencias         Licencia[]
+  turnosVoluntario  TurnoVoluntario[]
+  calendarioConductor CalendarioConductor[]
+  carrosHabilitados   CarroVoluntario[]
+  oficialidad       Oficialidad?
+}
+
+model VoluntarioRol {
+  voluntarioId String
+  rol          RolSistema
+  voluntario   Voluntario @relation(fields: [voluntarioId], references: [id], onDelete: Cascade)
+
+  @@id([voluntarioId, rol])
+}
+
+model Oficialidad {
+  id           String     @id @default(cuid())
+  cargo        String
+  voluntarioId String     @unique
+  voluntario   Voluntario @relation(fields: [voluntarioId], references: [id], onDelete: Cascade)
+}
+
+// ── GUARDIA ───────────────────────────────────────────────────────────────────
+
+model Turno {
+  id          String            @id @default(cuid())
+  nombre      String
+  voluntarios TurnoVoluntario[]
+  citaciones  Citacion[]
+}
+
+model TurnoVoluntario {
+  turnoId      String
+  voluntarioId String
+  turno        Turno      @relation(fields: [turnoId], references: [id], onDelete: Cascade)
+  voluntario   Voluntario @relation(fields: [voluntarioId], references: [id], onDelete: Cascade)
+
+  @@id([turnoId, voluntarioId])
+}
+
+model Citacion {
+  id          String           @id @default(cuid())
+  turnoId     String?
+  turno       Turno?           @relation(fields: [turnoId], references: [id], onDelete: SetNull)
+  fechaInicio DateTime         @db.Date
+  fechaFin    DateTime?        @db.Date
+  camas       CamaAsignacion[]
+  createdAt   DateTime         @default(now())
+}
+
+model CamaAsignacion {
+  id           String     @id @default(cuid())
+  citacionId   String
+  citacion     Citacion   @relation(fields: [citacionId], references: [id], onDelete: Cascade)
+  numeroCama   Int
+  voluntarioId String
+  voluntario   Voluntario @relation(fields: [voluntarioId], references: [id], onDelete: Restrict)
+
+  @@unique([citacionId, numeroCama])
+}
+
+enum TipoPermiso {
+  PERMISO
+  PERMISO_ESPECIAL
+  REEMPLAZO
+}
+
+enum EstadoPermiso {
+  PENDIENTE
+  APROBADO
+  RECHAZADO
+}
+
+model Permiso {
+  id             String        @id @default(cuid())
+  solicitanteId  String
+  solicitante    Voluntario    @relation("solicitante", fields: [solicitanteId], references: [id], onDelete: Cascade)
+  tipo           TipoPermiso
+  reemplazanteId String?
+  reemplazante   Voluntario?   @relation("reemplazante", fields: [reemplazanteId], references: [id], onDelete: SetNull)
+  fechaGuardia   DateTime      @db.Date
+  estado         EstadoPermiso @default(PENDIENTE)
+  comentarios    String?
+  fechaEnvio     DateTime      @default(now())
+  fechaCierre    DateTime?
+}
+
+model CorreccionNoche {
+  id           String     @id @default(cuid())
+  fecha        DateTime   @db.Date
+  voluntarioId String
+  voluntario   Voluntario @relation("voluntario", fields: [voluntarioId], references: [id], onDelete: Cascade)
+  durmio       Boolean
+  autorId      String
+  autor        Voluntario @relation("autor", fields: [autorId], references: [id], onDelete: Restrict)
+  creadoEn     DateTime   @default(now())
+
+  @@unique([fecha, voluntarioId])
+}
+
+model Mensajero {
+  id           String     @id @default(cuid())
+  fecha        DateTime   @unique @db.Date
+  voluntarioId String
+  voluntario   Voluntario @relation(fields: [voluntarioId], references: [id], onDelete: Restrict)
+}
+
+model ConductorGuardia {
+  id           String     @id @default(cuid())
+  fecha        DateTime   @db.Date
+  voluntarioId String
+  voluntario   Voluntario @relation(fields: [voluntarioId], references: [id], onDelete: Restrict)
+
+  @@unique([fecha, voluntarioId])
+}
+
+model JGsSubrogante {
+  id           String     @id @default(cuid())
+  fecha        DateTime   @unique @db.Date
+  voluntarioId String
+  voluntario   Voluntario @relation(fields: [voluntarioId], references: [id], onDelete: Restrict)
+}
+
+model Licencia {
+  id           String     @id @default(cuid())
+  fecha        DateTime   @db.Date
+  voluntarioId String
+  voluntario   Voluntario @relation(fields: [voluntarioId], references: [id], onDelete: Cascade)
+
+  @@unique([fecha, voluntarioId])
+}
+
+// ── CONDUCTORES CBS ───────────────────────────────────────────────────────────
+
+model Cuartelero {
+  id           String            @id @default(cuid())
+  nombre       String
+  clave        String
+  nacimiento   DateTime?         @db.Date
+  fechaIngreso DateTime?         @db.Date
+  vigente      Boolean           @default(true)
+  pauta        Pauta[]
+  carros       CarroCuartelero[]
+}
+
+model Pauta {
+  id           String     @id @default(cuid())
+  cuarteleroId String
+  cuartelero   Cuartelero @relation(fields: [cuarteleroId], references: [id], onDelete: Cascade)
+  fecha        DateTime   @db.Date
+
+  @@unique([cuarteleroId, fecha])
+}
+
+model Carro {
+  id          String                @id @default(cuid())
+  nombre      String
+  voluntarios CarroVoluntario[]
+  cuarteleros CarroCuartelero[]
+  turnos      CalendarioConductorCarro[]
+}
+
+model CarroVoluntario {
+  carroId      String
+  voluntarioId String
+  carro        Carro      @relation(fields: [carroId], references: [id], onDelete: Cascade)
+  voluntario   Voluntario @relation(fields: [voluntarioId], references: [id], onDelete: Cascade)
+
+  @@id([carroId, voluntarioId])
+}
+
+model CarroCuartelero {
+  carroId      String
+  cuarteleroId String
+  carro        Carro      @relation(fields: [carroId], references: [id], onDelete: Cascade)
+  cuartelero   Cuartelero @relation(fields: [cuarteleroId], references: [id], onDelete: Cascade)
+
+  @@id([carroId, cuarteleroId])
+}
+
+model CalendarioConductor {
+  id            String                     @id @default(cuid())
+  voluntarioId  String
+  voluntario    Voluntario                 @relation(fields: [voluntarioId], references: [id], onDelete: Cascade)
+  fechaInicio   DateTime                   @db.Date
+  fechaFin      DateTime                   @db.Date
+  observaciones String?
+  carros        CalendarioConductorCarro[]
+}
+
+model CalendarioConductorCarro {
+  calendarioId String
+  carroId      String
+  calendario   CalendarioConductor @relation(fields: [calendarioId], references: [id], onDelete: Cascade)
+  carro        Carro               @relation(fields: [carroId], references: [id], onDelete: Cascade)
+
+  @@id([calendarioId, carroId])
+}
