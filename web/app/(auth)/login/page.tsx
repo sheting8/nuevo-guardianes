@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -51,9 +52,12 @@ export default function LoginPage() {
   }
 
   return (
-    <Card className="w-full max-w-sm">
-      <CardHeader>
-        <CardTitle>Guardianes</CardTitle>
+    <Card className="w-full max-w-sm border-border bg-card">
+      <CardHeader className="items-center text-center">
+        <div className="mb-2 flex size-24 items-center justify-center rounded-full bg-foreground/5 ring-1 ring-gold/40">
+          <Image src="/logo.png" alt="Compañía 15" width={72} height={80} priority />
+        </div>
+        <CardTitle className="text-gold">Guardianes</CardTitle>
         <CardDescription>Ingresa tus credenciales para acceder al sistema</CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit}>

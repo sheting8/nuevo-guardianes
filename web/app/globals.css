@@ -1,21 +1,28 @@
 @import "tailwindcss";
 
+/*
+ * Guardianes usa modo oscuro como única identidad visual (no toggleable).
+ * Institucional: negro + dorado (herencia alemana de la compañía).
+ * Acento de interacción: naranjo.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-  --card: #ffffff;
-  --card-foreground: #171717;
-  --primary: #171717;
-  --primary-foreground: #fafafa;
-  --secondary: #f4f4f5;
-  --secondary-foreground: #171717;
-  --muted: #f4f4f5;
-  --muted-foreground: #71717a;
+  --background: #0a0a0a;
+  --foreground: #f2f2f0;
+  --card: #141414;
+  --card-foreground: #f2f2f0;
+  --primary: #ff6b00;
+  --primary-foreground: #0a0a0a;
+  --secondary: #1f1f1f;
+  --secondary-foreground: #f2f2f0;
+  --muted: #1a1a1a;
+  --muted-foreground: #9b9b93;
   --destructive: #dc2626;
   --destructive-foreground: #fafafa;
-  --border: #e4e4e7;
-  --input: #e4e4e7;
-  --ring: #a1a1aa;
+  --border: #2a2a28;
+  --input: #2a2a28;
+  --ring: #ff6b00;
+  --gold: #d4af37;
+  --gold-foreground: #0a0a0a;
   --radius: 0.5rem;
 }
 
@@ -35,33 +42,16 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-gold: var(--gold);
+  --color-gold-foreground: var(--gold-foreground);
   --radius-sm: calc(var(--radius) - 0.25rem);
   --radius-md: var(--radius);
   --radius-lg: calc(var(--radius) + 0.25rem);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-    --card: #0a0a0a;
-    --card-foreground: #ededed;
-    --primary: #ededed;
-    --primary-foreground: #171717;
-    --secondary: #27272a;
-    --secondary-foreground: #ededed;
-    --muted: #27272a;
-    --muted-foreground: #a1a1aa;
-    --border: #27272a;
-    --input: #27272a;
-    --ring: #52525b;
-  }
+  --font-sans: var(--font-inter);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }

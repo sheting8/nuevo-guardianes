@@ -11,6 +11,11 @@ interface ApiErrorBody {
   message?: string | string[];
 }
 
+export interface PaginatedResponse<T> {
+  data: T[];
+  meta: { total: number; page: number; limit: number; totalPages: number };
+}
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -63,7 +68,7 @@ async function ejecutarFetch(path: string, options: ApiOptions, token: string | 
   });
 }
 
-async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
+async function requestEnvelope(path: string, options: ApiOptions = {}): Promise<Record<string, unknown>> {
   const accessToken = useAuthStore.getState().accessToken;
   let res = await ejecutarFetch(path, options, accessToken);
 
@@ -77,18 +82,30 @@ async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
     res = await ejecutarFetch(path, options, nuevoToken);
   }
 
-  const data = (await res.json().catch(() => null)) as { data?: T } & ApiErrorBody | null;
+  const body = (await res.json().catch(() => ({}))) as Record<string, unknown> & ApiErrorBody;
 
   if (!res.ok) {
-    const mensaje = data?.message ?? "Ocurrió un error inesperado";
+    const mensaje = body.message ?? "Ocurrió un error inesperado";
     throw new ApiError(Array.isArray(mensaje) ? mensaje[0] : mensaje, res.status);
   }
 
-  return (data?.data ?? (data as unknown as T)) as T;
+  return body;
+}
+
+async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
+  const body = await requestEnvelope(path, options);
+  return ("data" in body ? body.data : body) as T;
+}
+
+async function requestPaginated<T>(path: string, options: ApiOptions = {}): Promise<PaginatedResponse<T>> {
+  const body = await requestEnvelope(path, options);
+  return body as unknown as PaginatedResponse<T>;
 }
 
 export const api = {
   get: <T>(path: string, options?: ApiOptions) => request<T>(path, { ...options, method: "GET" }),
+  getPaginated: <T>(path: string, options?: ApiOptions) =>
+    requestPaginated<T>(path, { ...options, method: "GET" }),
   post: <T>(path: string, body?: unknown, options?: ApiOptions) =>
     request<T>(path, { ...options, method: "POST", body }),
   patch: <T>(path: string, body?: unknown, options?: ApiOptions) =>
