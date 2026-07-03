@@ -4,9 +4,11 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { CarrosModule } from './carros/carros.module';
+import { CitacionesModule } from './citaciones/citaciones.module';
 import { CuartelerosModule } from './cuarteleros/cuarteleros.module';
 import { OficialidadModule } from './oficialidad/oficialidad.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { TurnosModule } from './turnos/turnos.module';
 import { VoluntariosModule } from './voluntarios/voluntarios.module';
 
 @Module({
@@ -18,6 +20,8 @@ import { VoluntariosModule } from './voluntarios/voluntarios.module';
     OficialidadModule,
     CuartelerosModule,
     CarrosModule,
+    TurnosModule,
+    CitacionesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

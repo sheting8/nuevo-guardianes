@@ -4,7 +4,15 @@ import { useState } from "react";
 
 import { cn } from "@/lib/utils";
 
-export type EstadoCama = "NORMAL" | "REEMPLAZO" | "PERMISO_ESPECIAL" | "PERMISO" | "CONDUCTOR" | "VACIA";
+export type EstadoCama =
+  | "NORMAL"
+  | "REEMPLAZO"
+  | "PERMISO_ESPECIAL"
+  | "PERMISO"
+  | "LICENCIA"
+  | "OVERRIDE"
+  | "CONDUCTOR"
+  | "VACIA";
 
 export interface VoluntarioCama {
   nombres: string;
@@ -24,6 +32,8 @@ const ESTADO_ESTILO: Record<EstadoCama, string> = {
   REEMPLAZO: "bg-[#16A34A] border-[#15803D] text-white",
   PERMISO_ESPECIAL: "bg-[#EF4444] border-[#DC2626] text-white",
   PERMISO: "bg-[#FDE047] border-[#FACC15] text-black",
+  LICENCIA: "bg-[#A855F7] border-[#9333EA] text-white",
+  OVERRIDE: "bg-[#F97316] border-[#EA580C] text-black",
   CONDUCTOR: "bg-[#60A5FA] border-[#3B82F6] text-black",
   VACIA: "bg-[#374151] border-[#4B5563] text-gray-300",
 };
@@ -33,6 +43,8 @@ const ESTADO_LABEL: Record<EstadoCama, string> = {
   REEMPLAZO: "Reemplazo",
   PERMISO_ESPECIAL: "Permiso especial",
   PERMISO: "Permiso",
+  LICENCIA: "Licencia",
+  OVERRIDE: "Override",
   CONDUCTOR: "Conductor",
   VACIA: "Vacía",
 };
