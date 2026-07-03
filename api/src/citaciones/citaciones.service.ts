@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { EstadoPermiso, Prisma, TipoPermiso } from '@prisma/client';
+import { NochesService } from '../noches/noches.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CamaAsignacionDto } from './dto/cama-asignacion.dto';
 import { CreateCitacionDto } from './dto/create-citacion.dto';
@@ -26,7 +27,12 @@ type VoluntarioResumen = Prisma.VoluntarioGetPayload<{
 }>;
 
 type EstadoCama =
-  'NORMAL' | 'PERMISO' | 'PERMISO_ESPECIAL' | 'REEMPLAZO' | 'LICENCIA';
+  | 'NORMAL'
+  | 'PERMISO'
+  | 'PERMISO_ESPECIAL'
+  | 'REEMPLAZO'
+  | 'LICENCIA'
+  | 'OVERRIDE';
 
 const CITACION_INCLUDE = {
   turno: true,
@@ -49,7 +55,10 @@ const NUMERO_CAMA_MAX = 18;
 
 @Injectable()
 export class CitacionesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly nochesService: NochesService,
+  ) {}
 
   private async buscarOFallar(id: string): Promise<CitacionConCamas> {
     const citacion = await this.prisma.citacion.findUnique({
@@ -294,6 +303,8 @@ export class CitacionesService {
     });
     const licenciaIds = new Set(licencias.map((l) => l.voluntarioId));
 
+    const overrides = await this.nochesService.obtenerOverridesPorFecha(fecha);
+
     const idsNecesarios = new Set<string>();
     citacion?.camas.forEach((c) => idsNecesarios.add(c.voluntarioId));
     permisosAprobados.forEach((p) => {
@@ -322,6 +333,18 @@ export class CitacionesService {
           };
         }
 
+        // El override del JG pisa completamente el cálculo automático para
+        // el par (fecha, titular): override ?? cálculo automático.
+        if (overrides.has(titular.id)) {
+          const durmio = overrides.get(titular.id) as boolean;
+          return {
+            numeroCama,
+            voluntarioTitular: titular,
+            voluntarioEfectivo: durmio ? titular : null,
+            estado: 'OVERRIDE' as const,
+          };
+        }
+
         const resuelto = this.resolverCama(
           titular.id,
           permisosPorSolicitante,
@@ -344,5 +367,9 @@ export class CitacionesService {
       citacionId: citacion?.id ?? null,
       camas,
     };
+  }
+
+  async conteo(id: string) {
+    return this.nochesService.calcularConteoCitacion(id);
   }
 }

@@ -25,6 +25,8 @@ export interface CamaCardProps {
   voluntario?: VoluntarioCama | null;
   estado: EstadoCama;
   className?: string;
+  seleccionada?: boolean;
+  onSeleccionar?: () => void;
 }
 
 const ESTADO_ESTILO: Record<EstadoCama, string> = {
@@ -49,7 +51,14 @@ const ESTADO_LABEL: Record<EstadoCama, string> = {
   VACIA: "Vacía",
 };
 
-export function CamaCard({ numeroCama, voluntario, estado, className }: CamaCardProps) {
+export function CamaCard({
+  numeroCama,
+  voluntario,
+  estado,
+  className,
+  seleccionada,
+  onSeleccionar,
+}: CamaCardProps) {
   const [abierto, setAbierto] = useState(false);
 
   const etiqueta = voluntario ? `${voluntario.nombres} ${voluntario.apellidoP}` : ESTADO_LABEL[estado];
@@ -57,11 +66,15 @@ export function CamaCard({ numeroCama, voluntario, estado, className }: CamaCard
   return (
     <button
       type="button"
-      onClick={() => setAbierto((valor) => !valor)}
+      onClick={() => {
+        setAbierto((valor) => !valor);
+        onSeleccionar?.();
+      }}
       onBlur={() => setAbierto(false)}
       className={cn(
         "group relative flex h-full w-full items-center justify-center rounded-sm border font-bold",
         ESTADO_ESTILO[estado],
+        seleccionada && "ring-2 ring-offset-1 ring-primary",
         className,
       )}
     >

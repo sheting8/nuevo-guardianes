@@ -179,7 +179,9 @@ export class VoluntariosService {
   async desactivar(id: string) {
     const voluntario = await this.buscarOFallar(id);
     if (voluntario.tipo === TipoVoluntario.QUINCE) {
-      throw new BadRequestException('Los voluntarios de la 15a no se pueden desactivar');
+      throw new BadRequestException(
+        'Los voluntarios de la 15a no se pueden desactivar',
+      );
     }
 
     // El username original (= correlativo) debe liberarse para que un nuevo

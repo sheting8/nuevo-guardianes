@@ -40,9 +40,11 @@ const CAMA_ALTO_PX = 44;
 
 interface PanelCamasProps {
   camas: CamaPanelData[];
+  camaSeleccionada?: number | null;
+  onSeleccionarCama?: (numeroCama: number) => void;
 }
 
-export function PanelCamas({ camas }: PanelCamasProps) {
+export function PanelCamas({ camas, camaSeleccionada, onSeleccionarCama }: PanelCamasProps) {
   const porNumero = new Map(camas.map((cama) => [cama.numeroCama, cama]));
 
   return (
@@ -73,6 +75,8 @@ export function PanelCamas({ camas }: PanelCamasProps) {
                   numeroCama={numeroCama}
                   estado={cama?.estado ?? "VACIA"}
                   voluntario={cama?.voluntario}
+                  seleccionada={camaSeleccionada === numeroCama}
+                  onSeleccionar={onSeleccionarCama ? () => onSeleccionarCama(numeroCama) : undefined}
                 />
               </div>
             );

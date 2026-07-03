@@ -51,4 +51,10 @@ export class CitacionesController {
   ) {
     return this.citacionesService.actualizarCamas(id, camas);
   }
+
+  @Get(':id/conteo')
+  @Roles(RolSistema.JEFE_GUARDIA, RolSistema.ADMIN)
+  conteo(@Param('id') id: string) {
+    return this.citacionesService.conteo(id);
+  }
 }

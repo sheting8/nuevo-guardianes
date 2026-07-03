@@ -106,4 +106,29 @@ export class GuardiaService {
       include: { voluntario: { select: VOLUNTARIO_SELECT } },
     });
   }
+
+  async obtenerPorFecha(fecha: string) {
+    const fechaDate = parseFecha(fecha);
+
+    const [mensajero, conductores, jgs] = await Promise.all([
+      this.prisma.mensajero.findUnique({
+        where: { fecha: fechaDate },
+        include: { voluntario: { select: VOLUNTARIO_SELECT } },
+      }),
+      this.prisma.conductorGuardia.findMany({
+        where: { fecha: fechaDate },
+        include: { voluntario: { select: VOLUNTARIO_SELECT } },
+      }),
+      this.prisma.jGsSubrogante.findUnique({
+        where: { fecha: fechaDate },
+        include: { voluntario: { select: VOLUNTARIO_SELECT } },
+      }),
+    ]);
+
+    return {
+      mensajero: mensajero?.voluntario ?? null,
+      conductores: conductores.map((c) => c.voluntario),
+      jgs: jgs?.voluntario ?? null,
+    };
+  }
 }

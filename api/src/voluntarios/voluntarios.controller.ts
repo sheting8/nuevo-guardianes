@@ -13,7 +13,9 @@ import { RolSistema } from '@prisma/client';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { NochesService } from '../noches/noches.service';
 import { CreateVoluntarioDto } from './dto/create-voluntario.dto';
+import { QueryHistorialDto } from './dto/query-historial.dto';
 import { QueryVoluntariosDto } from './dto/query-voluntarios.dto';
 import { UpdateRolesDto } from './dto/update-roles.dto';
 import { UpdateVoluntarioDto } from './dto/update-voluntario.dto';
@@ -23,7 +25,10 @@ import { VoluntariosService } from './voluntarios.service';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('voluntarios')
 export class VoluntariosController {
-  constructor(private readonly voluntariosService: VoluntariosService) {}
+  constructor(
+    private readonly voluntariosService: VoluntariosService,
+    private readonly nochesService: NochesService,
+  ) {}
 
   @Get()
   listar(@Query() query: QueryVoluntariosDto) {
@@ -33,6 +38,12 @@ export class VoluntariosController {
   @Get(':id')
   detalle(@Param('id') id: string) {
     return this.voluntariosService.detalle(id);
+  }
+
+  @Get(':id/historial')
+  @Roles(RolSistema.JEFE_GUARDIA, RolSistema.ADMIN)
+  historial(@Param('id') id: string, @Query() query: QueryHistorialDto) {
+    return this.nochesService.calcularHistorial(id, query.desde, query.hasta);
   }
 
   @Post()

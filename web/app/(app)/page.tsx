@@ -44,7 +44,7 @@ export default function InicioPage() {
   const camas: CamaPanelData[] =
     data?.camas.map((cama) => ({
       numeroCama: cama.numeroCama,
-      estado: cama.voluntarioEfectivo ? (cama.estado ?? "NORMAL") : "VACIA",
+      estado: cama.estado ?? "VACIA",
       voluntario: cama.voluntarioEfectivo,
     })) ?? [];
 

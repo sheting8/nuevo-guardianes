@@ -6,7 +6,10 @@ import { AuthModule } from './auth/auth.module';
 import { CarrosModule } from './carros/carros.module';
 import { CitacionesModule } from './citaciones/citaciones.module';
 import { CuartelerosModule } from './cuarteleros/cuarteleros.module';
+import { DocumentosModule } from './documentos/documentos.module';
+import { EstadisticasModule } from './estadisticas/estadisticas.module';
 import { GuardiaModule } from './guardia/guardia.module';
+import { LibroGuardiaModule } from './libro-guardia/libro-guardia.module';
 import { LicenciasModule } from './licencias/licencias.module';
 import { OficialidadModule } from './oficialidad/oficialidad.module';
 import { PermisosModule } from './permisos/permisos.module';
@@ -28,6 +31,9 @@ import { VoluntariosModule } from './voluntarios/voluntarios.module';
     PermisosModule,
     GuardiaModule,
     LicenciasModule,
+    LibroGuardiaModule,
+    EstadisticasModule,
+    DocumentosModule,
   ],
   controllers: [AppController],
   providers: [AppService],
