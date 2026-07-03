@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { EstadoPermiso, Prisma, TipoPermiso } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CamaAsignacionDto } from './dto/cama-asignacion.dto';
 import { CreateCitacionDto } from './dto/create-citacion.dto';
@@ -20,6 +20,13 @@ const VOLUNTARIO_SELECT = {
   correlativo: true,
   tipo: true,
 } satisfies Prisma.VoluntarioSelect;
+
+type VoluntarioResumen = Prisma.VoluntarioGetPayload<{
+  select: typeof VOLUNTARIO_SELECT;
+}>;
+
+type EstadoCama =
+  'NORMAL' | 'PERMISO' | 'PERMISO_ESPECIAL' | 'REEMPLAZO' | 'LICENCIA';
 
 const CITACION_INCLUDE = {
   turno: true,
@@ -203,6 +210,49 @@ export class CitacionesService {
     return this.buscarOFallar(id);
   }
 
+  private resolverCama(
+    titularId: string,
+    permisosPorSolicitante: Map<
+      string,
+      { tipo: TipoPermiso; reemplazanteId: string | null }
+    >,
+    licenciaIds: Set<string>,
+  ): { voluntarioId: string | null; estado: EstadoCama } {
+    let actualId: string | null = titularId;
+    let estado: EstadoCama = 'NORMAL';
+    const visitados = new Set<string>();
+
+    while (actualId) {
+      if (visitados.has(actualId)) {
+        return { voluntarioId: null, estado };
+      }
+      visitados.add(actualId);
+
+      if (licenciaIds.has(actualId)) {
+        return { voluntarioId: null, estado: 'LICENCIA' };
+      }
+
+      const permiso = permisosPorSolicitante.get(actualId);
+      if (!permiso) {
+        return { voluntarioId: actualId, estado };
+      }
+
+      if (permiso.tipo === TipoPermiso.PERMISO) {
+        return { voluntarioId: actualId, estado: 'PERMISO' };
+      }
+      if (permiso.tipo === TipoPermiso.PERMISO_ESPECIAL) {
+        return { voluntarioId: null, estado: 'PERMISO_ESPECIAL' };
+      }
+
+      // REEMPLAZO: el reemplazante pasa a ocupar la cama; si el reemplazante
+      // a su vez tiene un permiso o licencia aprobado, la cadena continúa.
+      estado = 'REEMPLAZO';
+      actualId = permiso.reemplazanteId;
+    }
+
+    return { voluntarioId: null, estado };
+  }
+
   async panel(fecha: string) {
     const fechaDate = parseFecha(fecha);
 
@@ -228,17 +278,63 @@ export class CitacionesService {
       citacion?.camas.map((c) => [c.numeroCama, c]) ?? [],
     );
 
+    const permisosAprobados = await this.prisma.permiso.findMany({
+      where: { estado: EstadoPermiso.APROBADO, fechaGuardia: fechaDate },
+    });
+    const permisosPorSolicitante = new Map(
+      permisosAprobados.map((p) => [
+        p.solicitanteId,
+        { tipo: p.tipo, reemplazanteId: p.reemplazanteId },
+      ]),
+    );
+
+    const licencias = await this.prisma.licencia.findMany({
+      where: { fecha: fechaDate },
+      select: { voluntarioId: true },
+    });
+    const licenciaIds = new Set(licencias.map((l) => l.voluntarioId));
+
+    const idsNecesarios = new Set<string>();
+    citacion?.camas.forEach((c) => idsNecesarios.add(c.voluntarioId));
+    permisosAprobados.forEach((p) => {
+      if (p.reemplazanteId) idsNecesarios.add(p.reemplazanteId);
+    });
+
+    const voluntarios = await this.prisma.voluntario.findMany({
+      where: { id: { in: [...idsNecesarios] } },
+      select: VOLUNTARIO_SELECT,
+    });
+    const voluntarioPorId = new Map<string, VoluntarioResumen>(
+      voluntarios.map((v) => [v.id, v]),
+    );
+
     const camas = Array.from({ length: NUMERO_CAMA_MAX }, (_, i) => i + 1).map(
       (numeroCama) => {
         const asignacion = porNumero.get(numeroCama);
-        const voluntario = asignacion?.voluntario ?? null;
-        // Sprint 4: estado básico según CamaAsignacion. El encadenamiento de
-        // reemplazos (Sprint 5) y overrides (Sprint 6) se aplicará aquí más adelante.
+        const titular = asignacion?.voluntario ?? null;
+
+        if (!titular) {
+          return {
+            numeroCama,
+            voluntarioTitular: null,
+            voluntarioEfectivo: null,
+            estado: null,
+          };
+        }
+
+        const resuelto = this.resolverCama(
+          titular.id,
+          permisosPorSolicitante,
+          licenciaIds,
+        );
+
         return {
           numeroCama,
-          voluntarioTitular: voluntario,
-          voluntarioEfectivo: voluntario,
-          estado: voluntario ? ('NORMAL' as const) : null,
+          voluntarioTitular: titular,
+          voluntarioEfectivo: resuelto.voluntarioId
+            ? (voluntarioPorId.get(resuelto.voluntarioId) ?? null)
+            : null,
+          estado: resuelto.estado,
         };
       },
     );
