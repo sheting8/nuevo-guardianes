@@ -88,6 +88,12 @@ export class AuthService {
       throw new UnauthorizedException('Credenciales incorrectas');
     }
 
+    // Un voluntario eliminado (baja lógica permanente) no puede volver a
+    // autenticarse, aunque su contraseña siga siendo válida.
+    if (user.voluntario?.eliminado) {
+      throw new UnauthorizedException('Credenciales incorrectas');
+    }
+
     const usuario = this.mapUsuario(user);
     const accessToken = this.generarAccessToken(user.id, usuario.roles);
     const { token: refreshToken, expiresAt } = await this.generarRefreshToken(

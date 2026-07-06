@@ -16,6 +16,10 @@ const QUINCE_CORRELATIVO_MIN = 1;
 const QUINCE_CORRELATIVO_MAX = 999;
 const CONFEDERADO_CORRELATIVO_MIN = 1000;
 
+function parseFecha(fecha: string): Date {
+  return new Date(`${fecha}T00:00:00.000Z`);
+}
+
 const DETALLE_INCLUDE = {
   roles: true,
   carrosHabilitados: { include: { carro: true } },
@@ -82,6 +86,7 @@ export class VoluntariosService {
         : undefined;
 
     const where: Prisma.VoluntarioWhereInput = {
+      eliminado: false,
       ...(query.tipo ? { tipo: query.tipo } : {}),
       ...(query.activo !== undefined
         ? { activo: query.activo === 'true' }
@@ -155,6 +160,9 @@ export class VoluntariosService {
           company: dto.company,
           email: dto.email,
           telefono: dto.telefono,
+          fechaNacimiento: dto.fechaNacimiento
+            ? parseFecha(dto.fechaNacimiento)
+            : undefined,
           user: {
             create: { username, passwordHash },
           },
@@ -173,7 +181,20 @@ export class VoluntariosService {
 
   async actualizar(id: string, dto: UpdateVoluntarioDto) {
     await this.buscarOFallar(id);
-    return this.prisma.voluntario.update({ where: { id }, data: dto });
+    const { fechaNacimiento, ...resto } = dto;
+    return this.prisma.voluntario.update({
+      where: { id },
+      data: {
+        ...resto,
+        ...(fechaNacimiento !== undefined
+          ? {
+              fechaNacimiento: fechaNacimiento
+                ? parseFecha(fechaNacimiento)
+                : null,
+            }
+          : {}),
+      },
+    });
   }
 
   async desactivar(id: string) {
@@ -195,6 +216,31 @@ export class VoluntariosService {
         });
       }
       return tx.voluntario.update({ where: { id }, data: { activo: false } });
+    });
+  }
+
+  async eliminar(id: string) {
+    const voluntario = await this.buscarOFallar(id);
+    if (voluntario.eliminado) {
+      throw new BadRequestException('El voluntario ya fue eliminado');
+    }
+
+    // Baja lógica y permanente: aplica a cualquier tipo (a diferencia de
+    // desactivar(), que solo libera el correlativo de un CONFEDERADO). No se
+    // borra la fila para conservar historial, camas y permisos asociados.
+    // También se revocan sus refresh tokens y se bloquea el login (ver
+    // AuthService.login).
+    return this.prisma.$transaction(async (tx) => {
+      if (voluntario.userId) {
+        await tx.refreshToken.updateMany({
+          where: { userId: voluntario.userId, revoked: false },
+          data: { revoked: true },
+        });
+      }
+      return tx.voluntario.update({
+        where: { id },
+        data: { eliminado: true, eliminadoEn: new Date() },
+      });
     });
   }
 

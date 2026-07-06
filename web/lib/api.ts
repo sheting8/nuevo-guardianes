@@ -56,15 +56,18 @@ function irALogin(): void {
 
 async function ejecutarFetch(path: string, options: ApiOptions, token: string | null): Promise<Response> {
   const { skipAuth, body, headers, ...rest } = options;
+  // FormData (subida de archivos) no debe serializarse ni forzar
+  // Content-Type: el navegador setea el boundary multipart automáticamente.
+  const esFormData = body instanceof FormData;
   return fetch(`${API_URL}${path}`, {
     ...rest,
     credentials: "include",
     headers: {
-      "Content-Type": "application/json",
+      ...(esFormData ? {} : { "Content-Type": "application/json" }),
       ...(token && !skipAuth ? { Authorization: `Bearer ${token}` } : {}),
       ...headers,
     },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    body: esFormData ? body : body !== undefined ? JSON.stringify(body) : undefined,
   });
 }
 

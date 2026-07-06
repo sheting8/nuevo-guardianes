@@ -48,6 +48,8 @@ model Voluntario {
   correlativo Int
   tipo        TipoVoluntario
   activo      Boolean        @default(true)
+  eliminado   Boolean        @default(false)
+  eliminadoEn DateTime?
   userId      String?        @unique
   user        User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
   nombres     String
@@ -58,6 +60,7 @@ model Voluntario {
   company     Int
   email       String
   telefono    String?
+  fechaNacimiento DateTime? @db.Date
   roles             VoluntarioRol[]
   camasAsignadas    CamaAsignacion[]
   permisosEmitidos  Permiso[]          @relation("solicitante")

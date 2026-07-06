@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { TipoVoluntario } from '@prisma/client';
 import {
+  IsDateString,
   IsEmail,
   IsEnum,
   IsInt,
@@ -57,4 +58,14 @@ export class CreateVoluntarioDto {
   @IsOptional()
   @IsString()
   telefono?: string;
+
+  @ApiProperty({ required: false, example: '1990-05-15' })
+  @IsOptional()
+  @IsDateString(
+    {},
+    {
+      message: 'La fecha de nacimiento debe ser una fecha válida (YYYY-MM-DD)',
+    },
+  )
+  fechaNacimiento?: string;
 }
