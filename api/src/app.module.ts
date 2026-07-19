@@ -1,25 +1,31 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { CarrosModule } from './carros/carros.module';
+import { ChecklistsModule } from './checklists/checklists.module';
 import { CitacionesModule } from './citaciones/citaciones.module';
 import { CuartelerosModule } from './cuarteleros/cuarteleros.module';
 import { DocumentosModule } from './documentos/documentos.module';
 import { EstadisticasModule } from './estadisticas/estadisticas.module';
 import { GuardiaModule } from './guardia/guardia.module';
+import { InventarioModule } from './inventario/inventario.module';
 import { LibroGuardiaModule } from './libro-guardia/libro-guardia.module';
 import { LicenciasModule } from './licencias/licencias.module';
+import { NotificacionesModule } from './notificaciones/notificaciones.module';
 import { OficialidadModule } from './oficialidad/oficialidad.module';
 import { PermisosModule } from './permisos/permisos.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { RbacModule } from './rbac/rbac.module';
 import { TurnosModule } from './turnos/turnos.module';
 import { VoluntariosModule } from './voluntarios/voluntarios.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(),
     PrismaModule,
     AuthModule,
     VoluntariosModule,
@@ -34,6 +40,10 @@ import { VoluntariosModule } from './voluntarios/voluntarios.module';
     LibroGuardiaModule,
     EstadisticasModule,
     DocumentosModule,
+    RbacModule,
+    InventarioModule,
+    ChecklistsModule,
+    NotificacionesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

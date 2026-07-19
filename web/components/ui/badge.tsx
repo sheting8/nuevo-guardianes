@@ -3,15 +3,22 @@ import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
 
+// Mirrors Nocturne's .tag/.tag-accent/.tag-neutral/.tag-outline, kept under
+// the pre-existing variant names (default/secondary/gold/outline) so call
+// sites don't need updating for the token swap alone. Note: the prototype's
+// own light-theme override pairs tag-neutral's white background with a
+// near-white text color (only accent-* tokens were overridden, not
+// neutral-100) — visually broken there, so "secondary" here uses the
+// readable secondary/foreground pair instead of copying that bug.
 const badgeVariants = cva(
-  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium whitespace-nowrap",
+  "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap",
   {
     variants: {
       variant: {
-        default: "border-transparent bg-primary text-primary-foreground",
-        secondary: "border-transparent bg-secondary text-secondary-foreground",
-        gold: "border-transparent bg-gold text-gold-foreground",
-        outline: "border-border text-foreground",
+        default: "bg-accent-800 text-accent-100",
+        secondary: "bg-secondary text-secondary-foreground",
+        gold: "bg-accent-800 text-accent-100",
+        outline: "border border-primary text-primary",
       },
     },
     defaultVariants: {

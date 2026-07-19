@@ -29,15 +29,18 @@ export interface CamaCardProps {
   onSeleccionar?: () => void;
 }
 
+// Paleta armonizada con el fondo crema cálido / acento rojo institucional
+// (ver web/app/globals.css); se mantiene el significado semántico de cada
+// estado, solo se ajustan los tonos para no chocar con la nueva identidad.
 const ESTADO_ESTILO: Record<EstadoCama, string> = {
-  NORMAL: "bg-[#86EFAC] border-[#4ADE80] text-black",
-  REEMPLAZO: "bg-[#16A34A] border-[#15803D] text-white",
-  PERMISO_ESPECIAL: "bg-[#EF4444] border-[#DC2626] text-white",
-  PERMISO: "bg-[#FDE047] border-[#FACC15] text-black",
-  LICENCIA: "bg-[#A855F7] border-[#9333EA] text-white",
-  OVERRIDE: "bg-[#F97316] border-[#EA580C] text-black",
-  CONDUCTOR: "bg-[#60A5FA] border-[#3B82F6] text-black",
-  VACIA: "bg-[#374151] border-[#4B5563] text-gray-300",
+  NORMAL: "bg-[#BFE3C6] border-[#7FBF8E] text-[#1F3D2A]",
+  REEMPLAZO: "bg-[#4F9A6A] border-[#3B7A52] text-white",
+  PERMISO_ESPECIAL: "bg-[#7C1420] border-[#5C0F18] text-white",
+  PERMISO: "bg-[#E8B94D] border-[#C79A2E] text-[#241e1a]",
+  LICENCIA: "bg-[#B79AE0] border-[#9370C4] text-white",
+  OVERRIDE: "bg-[#E38B4E] border-[#C46A2E] text-[#241e1a]",
+  CONDUCTOR: "bg-[#7FB3E0] border-[#4C8FC7] text-[#1a2b3d]",
+  VACIA: "border-dashed border-border bg-background text-muted-foreground",
 };
 
 const ESTADO_LABEL: Record<EstadoCama, string> = {

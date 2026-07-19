@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ApiError, api } from "@/lib/api";
+import { registrarPushWeb } from "@/lib/push";
 import { useAuthStore } from "@/lib/store/auth-store";
 
 interface LoginResponse {
@@ -43,6 +44,7 @@ export default function LoginPage() {
         { skipAuth: true },
       );
       setAuth(data.user, data.accessToken);
+      void registrarPushWeb(); // best-effort, no bloquea el login
       router.push("/");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "No se pudo iniciar sesión");
@@ -54,10 +56,10 @@ export default function LoginPage() {
   return (
     <Card className="w-full max-w-sm border-border bg-card">
       <CardHeader className="items-center text-center">
-        <div className="mb-2 flex size-24 items-center justify-center rounded-full bg-foreground/5 ring-1 ring-gold/40">
+        <div className="mb-2 flex size-24 items-center justify-center rounded-full bg-primary/10 ring-1 ring-primary/30">
           <Image src="/logo.png" alt="Compañía 15" width={72} height={80} priority />
         </div>
-        <CardTitle className="text-gold">Guardianes</CardTitle>
+        <CardTitle className="text-primary">Guardianes</CardTitle>
         <CardDescription>Ingresa tus credenciales para acceder al sistema</CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit}>
@@ -87,10 +89,13 @@ export default function LoginPage() {
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
         </CardContent>
-        <CardFooter>
+        <CardFooter className="flex flex-col gap-3">
           <Button type="submit" className="w-full" disabled={cargando}>
             {cargando ? "Ingresando…" : "Ingresar"}
           </Button>
+          <p className="text-center text-xs text-muted-foreground">
+            Compañía 15 · Sistema de gestión operativa
+          </p>
         </CardFooter>
       </form>
     </Card>

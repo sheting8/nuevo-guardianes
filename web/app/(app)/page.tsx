@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { PanelCamas, type CamaPanelData } from "@/components/layout/panel-camas";
 import type { EstadoCama } from "@/components/layout/cama-card";
 import { api } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 interface VoluntarioPanel {
   id: string;
@@ -55,14 +56,14 @@ export default function InicioPage() {
           <PanelCamas camas={camas} />
 
           <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-            <Leyenda color="#86EFAC" label="Duerme" />
-            <Leyenda color="#16A34A" label="Reemplazo" />
-            <Leyenda color="#EF4444" label="Permiso especial" />
-            <Leyenda color="#FDE047" label="Permiso" />
-            <Leyenda color="#A855F7" label="Licencia" />
-            <Leyenda color="#F97316" label="Override" />
-            <Leyenda color="#60A5FA" label="Conductor" />
-            <Leyenda color="#374151" label="Vacía" />
+            <Leyenda color="#BFE3C6" label="Duerme" />
+            <Leyenda color="#4F9A6A" label="Reemplazo" />
+            <Leyenda color="#7C1420" label="Permiso especial" />
+            <Leyenda color="#E8B94D" label="Permiso" />
+            <Leyenda color="#B79AE0" label="Licencia" />
+            <Leyenda color="#E38B4E" label="Override" />
+            <Leyenda color="#7FB3E0" label="Conductor" />
+            <Leyenda color="transparent" label="Vacía" />
           </div>
         </div>
       </div>
@@ -81,9 +82,13 @@ export default function InicioPage() {
 }
 
 function Leyenda({ color, label }: { color: string; label: string }) {
+  const vacia = color === "transparent";
   return (
     <span className="flex items-center gap-1.5">
-      <span className="size-3 rounded-sm border border-border" style={{ backgroundColor: color }} />
+      <span
+        className={cn("size-3 rounded-sm border", vacia ? "border-dashed border-border bg-background" : "border-border")}
+        style={vacia ? undefined : { backgroundColor: color }}
+      />
       {label}
     </span>
   );

@@ -4,6 +4,7 @@
   "scripts": {
     "dev:api": "pnpm --filter api dev",
     "dev:web": "pnpm --filter web dev",
+    "dev:mobile": "cd mobile && flutter run",
     "dev": "pnpm run dev:api & pnpm run dev:web"
   }
 }

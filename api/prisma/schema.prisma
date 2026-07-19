@@ -75,6 +75,11 @@ model Voluntario {
   calendarioConductor CalendarioConductor[]
   carrosHabilitados   CarroVoluntario[]
   oficialidad       Oficialidad?
+  grupos              GrupoMiembro[]
+  autorizaciones       Autorizacion[]
+  checklistEjecuciones ChecklistEjecucion[]
+  notificaciones       Notificacion[]
+  dispositivos         DispositivoNotificacion[]
 }
 
 model VoluntarioRol {
@@ -230,6 +235,7 @@ model Carro {
   voluntarios CarroVoluntario[]
   cuarteleros CarroCuartelero[]
   turnos      CalendarioConductorCarro[]
+  ubicaciones Ubicacion[]
 }
 
 model CarroVoluntario {
@@ -267,4 +273,230 @@ model CalendarioConductorCarro {
   carro        Carro               @relation(fields: [carroId], references: [id], onDelete: Cascade)
 
   @@id([calendarioId, carroId])
+}
+
+// ── RBAC (nuevo, aditivo — RolSistema/@Roles() sigue vigente sin cambios) ──────
+//
+// Autorizacion.recursoId es deliberadamente genérico (sin FK de BD) en vez de
+// una columna nullable por tipo de recurso: el objetivo explícito es que este
+// RBAC crezca a nuevos tipos de recurso (y eventualmente a lo que hoy cubre
+// RolSistema) agregando un valor de enum, no una migración de esquema cada vez.
+// El costo real de esa decisión: no hay cascade-delete automático ni chequeo de
+// tipo a nivel de BD — el service layer de cada recurso debe borrar las
+// Autorizacion/ChecklistTemplate que lo referencian al eliminarlo, y validar que
+// un recursoId corresponda a un recurso real de ese tipo antes de crear el grant.
+
+model Grupo {
+  id              String         @id @default(cuid())
+  nombre          String
+  descripcion     String?
+  miembros        GrupoMiembro[]
+  autorizaciones  Autorizacion[]
+  createdAt       DateTime       @default(now())
+}
+
+model GrupoMiembro {
+  grupoId      String
+  voluntarioId String
+  grupo        Grupo      @relation(fields: [grupoId], references: [id], onDelete: Cascade)
+  voluntario   Voluntario @relation(fields: [voluntarioId], references: [id], onDelete: Cascade)
+
+  @@id([grupoId, voluntarioId])
+  @@index([voluntarioId])
+}
+
+enum NivelAcceso {
+  LEER
+  GESTIONAR
+}
+
+enum TipoRecursoAcceso {
+  CATEGORIA_INVENTARIO
+  UBICACION
+  CHECKLIST_TEMPLATE
+}
+
+enum TipoSujetoAcceso {
+  USUARIO
+  GRUPO
+}
+
+model Autorizacion {
+  id           String            @id @default(cuid())
+  sujetoTipo   TipoSujetoAcceso
+  voluntarioId String?
+  voluntario   Voluntario?       @relation(fields: [voluntarioId], references: [id], onDelete: Cascade)
+  grupoId      String?
+  grupo        Grupo?            @relation(fields: [grupoId], references: [id], onDelete: Cascade)
+  recursoTipo  TipoRecursoAcceso
+  recursoId    String
+  nivel        NivelAcceso
+  createdAt    DateTime          @default(now())
+
+  @@index([sujetoTipo, voluntarioId])
+  @@index([sujetoTipo, grupoId])
+  @@index([recursoTipo, recursoId])
+}
+
+// ── INVENTARIO ─────────────────────────────────────────────────────────────────
+
+model CategoriaInventario {
+  id          String           @id @default(cuid())
+  nombre      String
+  descripcion String?
+  activo      Boolean          @default(true)
+  items       ItemInventario[]
+}
+
+model Ubicacion {
+  id          String           @id @default(cuid())
+  nombre      String
+  descripcion String?
+  carroId     String?
+  carro       Carro?           @relation(fields: [carroId], references: [id], onDelete: SetNull)
+  activo      Boolean          @default(true)
+  items       ItemInventario[]
+}
+
+enum EstadoItemInventario {
+  OPERATIVO
+  EN_MANTENCION
+  FUERA_DE_SERVICIO
+  PERDIDO
+}
+
+model ItemInventario {
+  id          String               @id @default(cuid())
+  nombre      String
+  descripcion String?
+  categoriaId String
+  categoria   CategoriaInventario  @relation(fields: [categoriaId], references: [id])
+  ubicacionId String
+  ubicacion   Ubicacion            @relation(fields: [ubicacionId], references: [id])
+  codigo      String?
+  estado      EstadoItemInventario @default(OPERATIVO)
+  cantidad    Int                  @default(1)
+  createdAt   DateTime             @default(now())
+}
+
+// ── CHECKLISTS ─────────────────────────────────────────────────────────────────
+
+enum TipoFrecuenciaChecklist {
+  ROLLING
+  POR_CAMBIO_TURNO
+  ANTES_DE_USO
+}
+
+enum TipoAlcanceChecklist {
+  ITEM_INVENTARIO
+  CATEGORIA_INVENTARIO
+  UBICACION
+}
+
+model ChecklistTemplate {
+  id               String                  @id @default(cuid())
+  nombre           String
+  descripcion      String?
+  alcanceTipo      TipoAlcanceChecklist
+  alcanceId        String
+  tipoFrecuencia   TipoFrecuenciaChecklist
+  intervaloMinutos Int?
+  activo           Boolean                 @default(true)
+  items            ChecklistTemplateItem[]
+  ejecuciones      ChecklistEjecucion[]
+
+  @@index([alcanceTipo, alcanceId])
+}
+
+enum TipoPreguntaChecklist {
+  PASA_FALLA
+  NUMERO
+  SELECTOR
+  MATRIZ
+  TEXTO
+}
+
+model ChecklistTemplateItem {
+  id                  String                @id @default(cuid())
+  checklistTemplateId String
+  checklistTemplate   ChecklistTemplate     @relation(fields: [checklistTemplateId], references: [id], onDelete: Cascade)
+  orden               Int
+  descripcion         String
+  tipoPregunta        TipoPreguntaChecklist @default(PASA_FALLA)
+  // Forma según tipoPregunta — ver checklists.service.ts validarConfiguracion():
+  // PASA_FALLA: null | NUMERO: { min?, max? } | SELECTOR: { opciones: string[], multiple: boolean }
+  // MATRIZ: { filas: string[], columnas: string[] } | TEXTO: null
+  configuracion       Json?
+}
+
+model ChecklistEjecucion {
+  id                     String                   @id @default(cuid())
+  checklistTemplateId    String
+  checklistTemplate      ChecklistTemplate        @relation(fields: [checklistTemplateId], references: [id])
+  ejecutadoPorId         String
+  ejecutadoPor           Voluntario               @relation(fields: [ejecutadoPorId], references: [id])
+  fechaEjecucion         DateTime                 @default(now())
+  observacionesGenerales String?
+  items                  ChecklistEjecucionItem[]
+
+  @@index([checklistTemplateId, fechaEjecucion])
+}
+
+model ChecklistEjecucionItem {
+  id                      String                @id @default(cuid())
+  checklistEjecucionId    String
+  checklistEjecucion      ChecklistEjecucion    @relation(fields: [checklistEjecucionId], references: [id], onDelete: Cascade)
+  checklistTemplateItemId String
+  descripcion             String
+  // Snapshot del tipoPregunta del ChecklistTemplateItem al momento de
+  // ejecutar — mismo motivo que descripcion: si el tipo de la pregunta
+  // cambia después, el historial debe seguir mostrando lo que realmente
+  // se respondió en su momento.
+  tipoPregunta            TipoPreguntaChecklist
+  // Forma según tipoPregunta (snapshotted arriba):
+  // PASA_FALLA: boolean | NUMERO: number | SELECTOR: string | string[]
+  // MATRIZ: { fila: string; columna: string }[] (array, no Record — jsonb no
+  // garantiza orden de claves) | TEXTO: string
+  respuesta               Json
+  observacion             String?
+}
+
+// ── NOTIFICACIONES ──────────────────────────────────────────────────────────────
+
+enum TipoNotificacion {
+  CHECKLIST_VENCIDO
+  PERMISO_SOLICITADO
+  PERMISO_APROBADO
+  PERMISO_RECHAZADO
+}
+
+enum PlataformaDispositivo {
+  WEB
+  ANDROID
+  IOS
+}
+
+model Notificacion {
+  id           String           @id @default(cuid())
+  voluntarioId String
+  voluntario   Voluntario       @relation(fields: [voluntarioId], references: [id], onDelete: Cascade)
+  tipo         TipoNotificacion
+  titulo       String
+  cuerpo       String
+  datos        Json?
+  leida        Boolean          @default(false)
+  createdAt    DateTime         @default(now())
+
+  @@index([voluntarioId, leida])
+  @@index([voluntarioId, createdAt])
+}
+
+model DispositivoNotificacion {
+  id           String                @id @default(cuid())
+  voluntarioId String
+  voluntario   Voluntario            @relation(fields: [voluntarioId], references: [id], onDelete: Cascade)
+  token        String                @unique
+  plataforma   PlataformaDispositivo
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
 }

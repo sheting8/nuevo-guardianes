@@ -1,28 +1,35 @@
 @import "tailwindcss";
 
 /*
- * Guardianes usa modo oscuro como única identidad visual (no toggleable).
- * Institucional: negro + dorado (herencia alemana de la compañía).
- * Acento de interacción: naranjo.
+ * Guardianes visual identity, per the "Guardianes UI update" design project
+ * (claude.ai/design, prototype Guardianes.dc.html) — built on the Nocturne
+ * design system's component classes/token architecture, with Guardianes'
+ * own light/warm palette override (Nocturne's own default is a dark
+ * blue-grey theme; this app deliberately overrides those token VALUES only).
+ * Warm cream ground, red institutional accent — replaces the previous
+ * black+gold dark-only theme.
  */
 :root {
-  --background: #0a0a0a;
-  --foreground: #f2f2f0;
-  --card: #141414;
-  --card-foreground: #f2f2f0;
-  --primary: #ff6b00;
-  --primary-foreground: #0a0a0a;
-  --secondary: #1f1f1f;
-  --secondary-foreground: #f2f2f0;
-  --muted: #1a1a1a;
-  --muted-foreground: #9b9b93;
-  --destructive: #dc2626;
-  --destructive-foreground: #fafafa;
-  --border: #2a2a28;
-  --input: #2a2a28;
-  --ring: #ff6b00;
-  --gold: #d4af37;
-  --gold-foreground: #0a0a0a;
+  --background: #f2ede8;
+  --foreground: #241e1a;
+  --card: #ffffff;
+  --card-foreground: #241e1a;
+  --primary: #c81e2c;
+  --primary-foreground: #fbeceb;
+  --secondary: #f7f2ee;
+  --secondary-foreground: #241e1a;
+  --muted: #f7f2ee;
+  --muted-foreground: #6b6058;
+  --destructive: #c81e2c;
+  --destructive-foreground: #fbeceb;
+  --border: #e4dcd3;
+  --input: #e4dcd3;
+  --ring: #c81e2c;
+  --accent-100: #fbeceb;
+  --accent-400: #e04630;
+  --accent-800: #7c1420;
+  --shadow-sm: 0 1px 3px rgba(60, 40, 30, 0.08);
+  --shadow-md: 0 6px 20px rgba(60, 40, 30, 0.12);
   --radius: 0.5rem;
 }
 
@@ -42,8 +49,9 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-gold: var(--gold);
-  --color-gold-foreground: var(--gold-foreground);
+  --color-accent-100: var(--accent-100);
+  --color-accent-400: var(--accent-400);
+  --color-accent-800: var(--accent-800);
   --radius-sm: calc(var(--radius) - 0.25rem);
   --radius-md: var(--radius);
   --radius-lg: calc(var(--radius) + 0.25rem);

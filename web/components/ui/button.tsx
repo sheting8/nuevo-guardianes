@@ -8,11 +8,14 @@ const buttonVariants = cva(
   "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 outline-none focus-visible:ring-2 focus-visible:ring-ring",
   {
     variants: {
+      // Nocturne: primary actions are an accent OUTLINE, never a filled
+      // background — this is a deliberate system rule (see the design
+      // project's readme), not an oversight.
       variant: {
-        default: "bg-primary text-primary-foreground hover:opacity-90",
-        destructive: "bg-destructive text-destructive-foreground hover:opacity-90",
+        default: "border border-primary bg-transparent text-primary hover:bg-primary/10 active:bg-primary/20",
+        destructive: "border border-destructive bg-transparent text-destructive hover:bg-destructive/10 active:bg-destructive/20",
         outline: "border border-input bg-background hover:bg-secondary",
-        ghost: "hover:bg-secondary",
+        ghost: "text-primary hover:bg-primary/10 active:bg-primary/20",
       },
       size: {
         default: "h-11 px-4 py-2",

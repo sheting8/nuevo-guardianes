@@ -3,10 +3,12 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { EstadoPermiso, Prisma, RolSistema, TipoPermiso } from '@prisma/client';
+import { EstadoPermiso, Prisma, RolSistema, TipoNotificacion, TipoPermiso } from '@prisma/client';
 import type { AuthenticatedUser } from '../auth/types/jwt-payload.interface';
+import { NotificacionesService } from '../notificaciones/notificaciones.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePermisoDto } from './dto/create-permiso.dto';
 import { QueryPermisosDto } from './dto/query-permisos.dto';
@@ -33,7 +35,33 @@ function parseFecha(fecha: string): Date {
 
 @Injectable()
 export class PermisosService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(PermisosService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificacionesService: NotificacionesService,
+  ) {}
+
+  private async voluntariosGestores(): Promise<string[]> {
+    const roles = await this.prisma.voluntarioRol.findMany({
+      where: { rol: { in: [RolSistema.JEFE_GUARDIA, RolSistema.ADMIN] } },
+      select: { voluntarioId: true },
+    });
+    return [...new Set(roles.map((r) => r.voluntarioId))];
+  }
+
+  // Una notificación es secundaria a la acción real (crear/actualizar un
+  // permiso) — un fallo acá (Firebase caído, un error inesperado al escribir
+  // Notificacion) nunca debe tumbar la respuesta al usuario.
+  private async notificarSinFallar(fn: () => Promise<unknown>): Promise<void> {
+    try {
+      await fn();
+    } catch (error) {
+      this.logger.warn(
+        `No se pudo enviar una notificación de permiso: ${(error as Error).message}`,
+      );
+    }
+  }
 
   private async voluntarioIdDeUsuario(userId: string): Promise<string> {
     const voluntario = await this.prisma.voluntario.findUnique({
@@ -144,7 +172,7 @@ export class PermisosService {
       reemplazanteId = dto.reemplazanteId;
     }
 
-    return this.prisma.permiso.create({
+    const permiso = await this.prisma.permiso.create({
       data: {
         solicitanteId,
         tipo: dto.tipo,
@@ -153,6 +181,20 @@ export class PermisosService {
       },
       include: PERMISO_INCLUDE,
     });
+
+    await this.notificarSinFallar(async () => {
+      const gestores = await this.voluntariosGestores();
+      const solicitante = permiso.solicitante;
+      await this.notificacionesService.crearParaMuchos(
+        gestores,
+        TipoNotificacion.PERMISO_SOLICITADO,
+        'Nueva solicitud de permiso',
+        `${solicitante.nombres} ${solicitante.apellidoP} solicitó un ${dto.tipo.toLowerCase()} para el ${dto.fechaGuardia}`,
+        { permisoId: permiso.id },
+      );
+    });
+
+    return permiso;
   }
 
   private construirWhere(
@@ -198,7 +240,7 @@ export class PermisosService {
       );
     }
 
-    return this.prisma.permiso.update({
+    const actualizado = await this.prisma.permiso.update({
       where: { id },
       data: {
         estado: dto.estado,
@@ -207,6 +249,20 @@ export class PermisosService {
       },
       include: PERMISO_INCLUDE,
     });
+
+    await this.notificarSinFallar(() =>
+      this.notificacionesService.crear(
+        actualizado.solicitanteId,
+        dto.estado === EstadoPermiso.APROBADO
+          ? TipoNotificacion.PERMISO_APROBADO
+          : TipoNotificacion.PERMISO_RECHAZADO,
+        dto.estado === EstadoPermiso.APROBADO ? 'Permiso aprobado' : 'Permiso rechazado',
+        `Tu solicitud de ${actualizado.tipo.toLowerCase()} para el ${actualizado.fechaGuardia.toISOString().slice(0, 10)} fue ${dto.estado.toLowerCase()}`,
+        { permisoId: actualizado.id },
+      ),
+    );
+
+    return actualizado;
   }
 
   async eliminar(id: string, user: AuthenticatedUser) {

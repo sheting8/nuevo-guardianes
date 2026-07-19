@@ -71,7 +71,11 @@ async function ejecutarFetch(path: string, options: ApiOptions, token: string | 
   });
 }
 
-async function requestEnvelope(path: string, options: ApiOptions = {}): Promise<Record<string, unknown>> {
+// Ejecuta el fetch y, si vence el access token (401), lo renueva una vez y
+// reintenta — usado tanto por las respuestas JSON como por las binarias
+// (descarga de documentos), para que ambas compartan el mismo comportamiento
+// de sesión en vez de que cada llamador reimplemente su propio 401→refresh.
+async function fetchConReintento(path: string, options: ApiOptions = {}): Promise<Response> {
   const accessToken = useAuthStore.getState().accessToken;
   let res = await ejecutarFetch(path, options, accessToken);
 
@@ -85,14 +89,23 @@ async function requestEnvelope(path: string, options: ApiOptions = {}): Promise<
     res = await ejecutarFetch(path, options, nuevoToken);
   }
 
+  return res;
+}
+
+async function leerMensajeError(res: Response, fallback: string): Promise<ApiError> {
   const body = (await res.json().catch(() => ({}))) as Record<string, unknown> & ApiErrorBody;
+  const mensaje = body.message ?? fallback;
+  return new ApiError(Array.isArray(mensaje) ? mensaje[0] : mensaje, res.status);
+}
+
+async function requestEnvelope(path: string, options: ApiOptions = {}): Promise<Record<string, unknown>> {
+  const res = await fetchConReintento(path, options);
 
   if (!res.ok) {
-    const mensaje = body.message ?? "Ocurrió un error inesperado";
-    throw new ApiError(Array.isArray(mensaje) ? mensaje[0] : mensaje, res.status);
+    throw await leerMensajeError(res, "Ocurrió un error inesperado");
   }
 
-  return body;
+  return (await res.json().catch(() => ({}))) as Record<string, unknown>;
 }
 
 async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
@@ -105,6 +118,28 @@ async function requestPaginated<T>(path: string, options: ApiOptions = {}): Prom
   return body as unknown as PaginatedResponse<T>;
 }
 
+function descargarBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const enlace = document.createElement("a");
+  enlace.href = url;
+  enlace.download = filename;
+  enlace.click();
+  URL.revokeObjectURL(url);
+}
+
+// Para endpoints que retornan un binario (.docx) en vez del envelope { data }
+// habitual — comparte el mismo fetch con reintento de sesión que el resto del
+// cliente, en vez de que cada página adjunte el token y maneje el 401 a mano.
+async function download(path: string, filename: string, options?: ApiOptions): Promise<void> {
+  const res = await fetchConReintento(path, { ...options, method: "GET" });
+
+  if (!res.ok) {
+    throw await leerMensajeError(res, "No se pudo generar el documento");
+  }
+
+  descargarBlob(await res.blob(), filename);
+}
+
 export const api = {
   get: <T>(path: string, options?: ApiOptions) => request<T>(path, { ...options, method: "GET" }),
   getPaginated: <T>(path: string, options?: ApiOptions) =>
@@ -114,4 +149,5 @@ export const api = {
   patch: <T>(path: string, body?: unknown, options?: ApiOptions) =>
     request<T>(path, { ...options, method: "PATCH", body }),
   delete: <T>(path: string, options?: ApiOptions) => request<T>(path, { ...options, method: "DELETE" }),
+  download,
 };
