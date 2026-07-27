@@ -1,0 +1,70 @@
+# Render Blueprint — deploys both services in one shot via "New +" -> "Blueprint"
+# in the Render dashboard, pointed at this repo.
+#
+# This is written but NOT verified against a live Render deploy (no Render
+# account access from here) — watch the first build's logs and adjust
+# buildCommand/startCommand if a path doesn't match what Render expects.
+#
+# Before deploying, replace:
+#   - <TU_DOMINIO_WEB>  e.g. app.tudominio.cl  (the web service's custom domain)
+#   - <TU_DOMINIO_API>  e.g. api.tudominio.cl  (the API service's custom domain)
+# and set the `sync: false` env vars below in the Render dashboard (they're
+# secrets — never commit real values here).
+
+services:
+  - type: web
+    name: guardianes-api
+    runtime: node
+    plan: starter
+    region: oregon
+    buildCommand: >-
+      corepack enable &&
+      corepack pnpm install --frozen-lockfile &&
+      corepack pnpm --filter api exec prisma generate &&
+      corepack pnpm --filter api build
+    # migrate deploy runs on every boot — safe/idempotent, guarantees the DB
+    # schema always matches what this deploy expects before main.js starts.
+    startCommand: >-
+      corepack pnpm --filter api exec prisma migrate deploy &&
+      node api/dist/main.js
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4000
+      - key: FRONTEND_URL
+        value: https://app.gethosting.cloud
+      - key: DATABASE_URL
+        sync: false # Supabase connection string — paste in the Render dashboard
+      - key: JWT_ACCESS_SECRET
+        sync: false # generate a fresh random secret, do NOT reuse the local dev one
+      - key: FIREBASE_SERVICE_ACCOUNT_JSON
+        sync: false # optional — only if push notifications are configured
+
+  - type: web
+    name: guardianes-web
+    runtime: node
+    plan: starter
+    region: oregon
+    buildCommand: >-
+      corepack enable &&
+      corepack pnpm install --frozen-lockfile &&
+      corepack pnpm --filter web build
+    startCommand: corepack pnpm --filter web start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_API_URL
+        value: https://api.gethosting.cloud
+      # Only needed once a real Firebase project exists for web push:
+      - key: NEXT_PUBLIC_FIREBASE_API_KEY
+        sync: false
+      - key: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+        sync: false
+      - key: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+        sync: false
+      - key: NEXT_PUBLIC_FIREBASE_APP_ID
+        sync: false
+      - key: NEXT_PUBLIC_FIREBASE_VAPID_KEY
+        sync: false
